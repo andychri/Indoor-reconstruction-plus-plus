@@ -81,7 +81,7 @@ main(int argc, char **argv)
         dists.emplace_back(d);
     }
 
-    ofstream myfile;
+    std::ofstream myfile;
     myfile.open(output_file);
 
     for (auto & dist : dists)
