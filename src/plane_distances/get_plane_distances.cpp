@@ -20,11 +20,10 @@
 
 typedef pcl::PointCloud<pcl::PointXYZL> point_cloud;
 
-int
-main(int argc, char **argv)
+int main(int argc, char **argv)
 {
-    point_cloud::Ptr cloud (new point_cloud);
-    point_cloud::Ptr cropped (new point_cloud);
+    point_cloud::Ptr cloud(new point_cloud);
+    point_cloud::Ptr cropped(new point_cloud);
 
     std::string input_file;
     std::string output_file;
@@ -34,9 +33,9 @@ main(int argc, char **argv)
 
     char opt_f[] = "-f";
     char opt_o[] = "-o";
-    pcl::console::parse_argument(argc, (char**)argv, opt_f, input_file);
-    pcl::console::parse_argument(argc, (char**)argv, opt_o, output_file);
-    for (auto const& v : boundaries)
+    pcl::console::parse_argument(argc, (char **)argv, opt_f, input_file);
+    pcl::console::parse_argument(argc, (char **)argv, opt_o, output_file);
+    for (auto const &v : boundaries)
     {
         std::cout << v << " " << std::flush;
     }
@@ -44,7 +43,6 @@ main(int argc, char **argv)
 
     float minX = boundaries[0], minY = boundaries[2], minZ = boundaries[4];
     float maxX = boundaries[1], maxY = boundaries[3], maxZ = boundaries[5];
-
 
     std::cout << "Loading file" << std::endl;
     pcl::io::loadPCDFile<pcl::PointXYZL>(input_file, *cloud);
@@ -55,24 +53,25 @@ main(int argc, char **argv)
     boxFilter.setInputCloud(cloud);
     boxFilter.filter(*cropped);
 
-    pcl::SampleConsensusModelPlane<pcl::PointXYZL>::Ptr model_p (new pcl::SampleConsensusModelPlane<pcl::PointXYZL> (cropped));
-    pcl::RandomSampleConsensus<pcl::PointXYZL> ransac (model_p);
-    ransac.setDistanceThreshold (.01);
+    pcl::SampleConsensusModelPlane<pcl::PointXYZL>::Ptr model_p(new pcl::SampleConsensusModelPlane<pcl::PointXYZL>(cropped));
+    pcl::RandomSampleConsensus<pcl::PointXYZL> ransac(model_p);
+    ransac.setDistanceThreshold(.01);
 
     std::cout << "Computing plane" << std::endl;
     ransac.computeModel();
     Eigen::VectorXf coeff;
     ransac.getModelCoefficients(coeff);
 
-    struct DistanceData {
+    struct DistanceData
+    {
         double distance_signed;
         int laser_id;
-        float* data;
+        float *data;
     };
 
     std::vector<DistanceData> dists;
 
-    for (auto & it : *cropped)
+    for (auto &it : *cropped)
     {
         DistanceData d{};
         d.distance_signed = pcl::pointToPlaneDistanceSigned(it, coeff);
@@ -84,7 +83,7 @@ main(int argc, char **argv)
     std::ofstream myfile;
     myfile.open(output_file);
 
-    for (auto & dist : dists)
+    for (auto &dist : dists)
     {
         myfile << dist.distance_signed << " " << dist.data[0] << " " << dist.data[1] << " " << dist.data[2] << " " << dist.data[3] << " " << dist.laser_id << std::endl;
     }

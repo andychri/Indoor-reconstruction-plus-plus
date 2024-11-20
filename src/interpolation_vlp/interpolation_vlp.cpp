@@ -3,7 +3,7 @@
 #include <fstream>
 #include <stdlib.h>
 #include <sys/types.h>
-#include <ifaddrs.h> // for getifaddrs
+#include <ifaddrs.h>    // for getifaddrs
 #include <netinet/in.h> // for sockaddr_in
 
 // VelodyneCapture
@@ -32,7 +32,7 @@
 #define PI 3.14159265359
 
 #define VLP_ADDRESS "192.168.1.201"
-#define VLP_PORT    2368
+#define VLP_PORT 2368
 
 volatile sig_atomic_t interrupted = false;
 
@@ -45,20 +45,18 @@ inline double clamp(double v)
 {
     // const double t = v < 0 ? 0 : v;
     // return t > 1.0 ? 1.0 : t;
-    return std::min( std::max( v, 0.0 ), 1.0 );
+    return std::min(std::max(v, 0.0), 1.0);
 }
 
-const std::vector<float> vertical_correction = { 11.2, -0.7, 9.7, -2.2, 8.1, -3.7, 6.6, -5.1, 5.1, -6.6, 3.7, -8.1, 2.2, -9.7, 0.7, -11.2 };
+const std::vector<float> vertical_correction = {11.2, -0.7, 9.7, -2.2, 8.1, -3.7, 6.6, -5.1, 5.1, -6.6, 3.7, -8.1, 2.2, -9.7, 0.7, -11.2};
 
-
-static bool validate_interface( const char* address );
+static bool validate_interface(const char *address);
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////// Main ///////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////
 
-
-int main( int argc, char **argv )
+int main(int argc, char **argv)
 {
     signal(SIGINT, signal_handler);
 
@@ -68,7 +66,7 @@ int main( int argc, char **argv )
 
     Parameters params;
 
-    parseargs( argc, argv, params );
+    parseargs(argc, argv, params);
 
     // std::string directory;
     // std::string fragment;
@@ -78,26 +76,26 @@ int main( int argc, char **argv )
     // int fov_end;
     bool write_pcd;
     // bool apply_correction;
-    std::vector <std::string> pcds;
+    std::vector<std::string> pcds;
 
-    if( validate_interface( VLP_ADDRESS ) == false )
+    if (validate_interface(VLP_ADDRESS) == false)
     {
         cerr << "This computer has no network interface configured for reception from the VLP-16" << endl;
         return 1;
     }
 
-// ------------------------------------
-// ------ SET UP IMU CONNECTION -------
-// ------------------------------------
+    // ------------------------------------
+    // ------ SET UP IMU CONNECTION -------
+    // ------------------------------------
 
     Imu imu;
 
-    imu.init( );
+    imu.init();
 
-// -------------------------------------------------
+    // -------------------------------------------------
 
     std::string path;
-    if( params.use_odometry )
+    if (params.use_odometry)
     {
         path = params.directory + "/odometry/odometry_" + std::to_string(params.odometry_number) + "/";
         std::cout << "Writing to: odometry_" << params.odometry_number << "\n\n";
@@ -130,29 +128,30 @@ int main( int argc, char **argv )
     pcl::PointCloud<pcl::PointXYZRGBL> cloud;
 
     // Initialize some loop variables
-    int number = 0; // Counter for number of pcds in one 360 degree frame
-    int frame_count = 0; // Counter for a full 360 degree rotation
+    int number = 0;                           // Counter for number of pcds in one 360 degree frame
+    int frame_count = 0;                      // Counter for a full 360 degree rotation
     double azimuth_rotation = params.fov_end; // Used to check n-1 azimuth rotation
     long timestamp = 0;
-
 
     // ----------------------------------------------------------------
     // --------------------SET UP VLP CONNECTION ----------------------
     // ----------------------------------------------------------------
 
     // Connect to ipadress and port
-    const boost::asio::ip::address ipaddress = boost::asio::ip::address::from_string( VLP_ADDRESS );
+    const boost::asio::ip::address ipaddress = boost::asio::ip::address::from_string(VLP_ADDRESS);
     const unsigned short port = VLP_PORT;
     velodyne::VLP16Capture capture(ipaddress, port);
 
     // Check if capture is open
-    if (!capture.isOpen()) {
+    if (!capture.isOpen())
+    {
         std::cerr << "Can't open VelodyneCapture." << std::endl;
         return -1;
     }
-    
+
     // Print
-    else {
+    else
+    {
         std::cout << "Capture from Sensor..." << std::endl;
         std::cout << "ipadress : " << ipaddress << std::endl;
         std::cout << "port : " << port << std::endl;
@@ -170,16 +169,21 @@ int main( int argc, char **argv )
     while (capture.isRun() && !interrupted)
     {
         ct--;
-        if( ct<0 ) { cerr << "."; ct = 100000; }
+        if (ct < 0)
+        {
+            cerr << ".";
+            ct = 100000;
+        }
 
         // Initialize lasers with velodyne data
-        std::vector <velodyne::Laser> lasers;
+        std::vector<velodyne::Laser> lasers;
         capture >> lasers;
-        if (lasers.empty()) {
+        if (lasers.empty())
+        {
             continue;
         }
         // Fill in the cloud data -> used for writing to pcd file
-        cloud.width = static_cast <uint32_t>(lasers.size());
+        cloud.width = static_cast<uint32_t>(lasers.size());
         cloud.height = 1;
         cloud.is_dense = false;
         cloud.points.resize(cloud.width * cloud.height);
@@ -194,12 +198,13 @@ int main( int argc, char **argv )
         for (const velodyne::Laser &laser : lasers)
         {
             // Distance, azimuth and vertical of laser
-            const auto distance = static_cast<double>( laser.distance );
+            const auto distance = static_cast<double>(laser.distance);
             const double azimuth = (laser.azimuth * PI) / 180.0;
             const double vertical = (laser.vertical * PI) / 180.0;
 
             // Increments frame count and resets pcd count if azimuth angle exceeds field of view end degrees
-            if (laser.azimuth > params.fov_end and azimuth_rotation < params.fov_end){
+            if (laser.azimuth > params.fov_end and azimuth_rotation < params.fov_end)
+            {
                 frame_count++;
                 number = 0;
             }
@@ -208,34 +213,36 @@ int main( int argc, char **argv )
             azimuth_rotation = laser.azimuth;
 
             // Check if the points are inside scope (case when fov start is greater than fov end)
-            if (laser.azimuth<params.fov_start and laser.azimuth>params.fov_end and params.fov_start>params.fov_end){
+            if (laser.azimuth < params.fov_start and laser.azimuth > params.fov_end and params.fov_start > params.fov_end)
+            {
                 // Don't write pcds and continue
                 write_pcd = false;
                 continue;
             }
 
             // Check if the points are inside scope (case when fov end is greater than fov start)
-            if ((laser.azimuth<params.fov_start || laser.azimuth>params.fov_end) and params.fov_end>params.fov_start){
+            if ((laser.azimuth < params.fov_start || laser.azimuth > params.fov_end) and params.fov_end > params.fov_start)
+            {
                 // Don't write pcds and continue
                 write_pcd = false;
                 continue;
             }
 
             // x-coordinate
-            auto x = static_cast <float> ((distance * std::cos(vertical)) * std::sin(azimuth));
+            auto x = static_cast<float>((distance * std::cos(vertical)) * std::sin(azimuth));
             // y-coordinate
-            auto y = static_cast <float> ((distance * std::cos(vertical)) * std::cos(azimuth));
+            auto y = static_cast<float>((distance * std::cos(vertical)) * std::cos(azimuth));
             // z-coordinate
-            auto z = static_cast <float> ((distance * std::sin(vertical)));
+            auto z = static_cast<float>((distance * std::sin(vertical)));
             // Laser intensity
-            const auto intensity = static_cast <unsigned int> (laser.intensity);
+            const auto intensity = static_cast<unsigned int>(laser.intensity);
             // Laser timestamp
             timestamp = laser.time;
 
             // Points for PCD file
             cloud.points[j].x = x / 100; // converting to meters
             cloud.points[j].y = y / 100; // converting to meters
-            if( params.apply_correction )
+            if (params.apply_correction)
             {
                 cloud.points[j].z = (z + (vertical_correction[laser.id] / 10)) / 100; // converting to meters
             }
@@ -253,9 +260,9 @@ int main( int argc, char **argv )
             // making hex string of rgb values
             std::stringstream stream;
             stream << "0x00"
-                   << std::setfill ('0') << std::setw(2) << std::hex << int(r*255)
-                   << std::setfill ('0') << std::setw(2) << std::hex << int(g*255)
-                   << std::setfill ('0') << std::setw(2) << std::hex << int(b*255);
+                   << std::setfill('0') << std::setw(2) << std::hex << int(r * 255)
+                   << std::setfill('0') << std::setw(2) << std::hex << int(g * 255)
+                   << std::setfill('0') << std::setw(2) << std::hex << int(b * 255);
             std::string rgb_hex(stream.str());
 
             // convert hex string to float
@@ -264,7 +271,7 @@ int main( int argc, char **argv )
             char cstr[rgb_hex.size() + 1];
             std::strcpy(cstr, rgb_hex.c_str());
             std::sscanf(cstr, "%x", &num);
-            rgb = *((float*)&num);
+            rgb = *((float *)&num);
 
             // adding rgb float to point cloud
             cloud.points[j].rgb = rgb;
@@ -292,13 +299,14 @@ int main( int argc, char **argv )
 
             // Get quaternion from imu
             quat_t currentQuaternion;
-            if( imu.get_quaternion( currentQuaternion ) == false )
+            if (imu.get_quaternion(currentQuaternion) == false)
             {
                 std::cerr << "Could not get quaternion, probably timeout" << endl;
             }
 
             currentQuaternion.normalize();
-            if (!startQuaternionSet) {
+            if (!startQuaternionSet)
+            {
                 startQuaternion = currentQuaternion;
                 startQuaternionSet = true;
             }
@@ -306,15 +314,17 @@ int main( int argc, char **argv )
 
             // Get gravity vector from imu
             vec3_t g;
-            if( imu.get_gravity_vector( g ) == false )
+            if (imu.get_gravity_vector(g) == false)
             {
-                std::cerr << "Could not get gravity vector, probably timeout" << "\n";
+                std::cerr << "Could not get gravity vector, probably timeout"
+                          << "\n";
             }
 
             quat_t rotate_down;
-            if( imu.get_rotate_down( rotate_down ) == false )
+            if (imu.get_rotate_down(rotate_down) == false)
             {
-                std::cerr << "Could not get gravity vector, probably timeout" << "\n";
+                std::cerr << "Could not get gravity vector, probably timeout"
+                          << "\n";
             }
 
             // Write quaternion and gravity data to csv file
@@ -336,15 +346,17 @@ int main( int argc, char **argv )
             quaternion.close();
 
             vec3_t angv;
-            if( imu.get_angular_velocity( angv ) == false )
+            if (imu.get_angular_velocity(angv) == false)
             {
-                std::cerr << "Could not get angular velocity, probably timeout" << "\n";
+                std::cerr << "Could not get angular velocity, probably timeout"
+                          << "\n";
             }
 
             vec3_t linacc;
-            if( imu.get_linear_acceleration( linacc ) == false )
+            if (imu.get_linear_acceleration(linacc) == false)
             {
-                std::cerr << "Could not get linear acceleration, probably timeout" << "\n";
+                std::cerr << "Could not get linear acceleration, probably timeout"
+                          << "\n";
             }
 
             // Write angular velocity and linear acceleration to file
@@ -363,42 +375,42 @@ int main( int argc, char **argv )
     return 0;
 }
 
-static bool validate_interface( const char* address )
+static bool validate_interface(const char *address)
 {
     struct in_addr vlp_addr;
-    int err = inet_pton( AF_INET, address, &vlp_addr );
-    if( err == 0 )
+    int err = inet_pton(AF_INET, address, &vlp_addr);
+    if (err == 0)
     {
-        perror( "No valid IPv4 address for VLP given. " );
+        perror("No valid IPv4 address for VLP given. ");
         return false;
     }
 
     struct ifaddrs *ifap;
-    err = getifaddrs( &ifap );
-    if( err != 0 )
+    err = getifaddrs(&ifap);
+    if (err != 0)
     {
-        perror( "Cannot get list of network interfaces. " );
+        perror("Cannot get list of network interfaces. ");
         return false;
     }
 
-    for( struct ifaddrs* it = ifap; it != nullptr; it=it->ifa_next )
+    for (struct ifaddrs *it = ifap; it != nullptr; it = it->ifa_next)
     {
-        if( it->ifa_addr->sa_family != AF_INET ) continue;
+        if (it->ifa_addr->sa_family != AF_INET)
+            continue;
 
         uint32_t net;
-        net  = ((struct sockaddr_in*)it->ifa_addr   )->sin_addr.s_addr;
-        net &= ((struct sockaddr_in*)it->ifa_netmask)->sin_addr.s_addr;
+        net = ((struct sockaddr_in *)it->ifa_addr)->sin_addr.s_addr;
+        net &= ((struct sockaddr_in *)it->ifa_netmask)->sin_addr.s_addr;
 
-        if( ( net & vlp_addr.s_addr ) == net )
+        if ((net & vlp_addr.s_addr) == net)
         {
             cout << "Found a good network interface " << it->ifa_name << endl;
-            freeifaddrs ( ifap );
+            freeifaddrs(ifap);
             return true;
         }
     }
     cout << "No good network interface for talking to " << VLP_ADDRESS << " found." << endl
          << "Check your network." << endl;
-    freeifaddrs ( ifap );
+    freeifaddrs(ifap);
     return false;
 }
-

@@ -13,6 +13,7 @@ find_package(Boost 1.53.0 REQUIRED COMPONENTS filesystem program_options)
 add_subdirectory(src/reconstruct)
 add_subdirectory(src/interpolation_vlp)
 add_subdirectory(src/calibration)
+add_subdirectory(src/filter)
 
 add_subdirectory(pcd2nicp)
 add_subdirectory(src/plane_distances)
